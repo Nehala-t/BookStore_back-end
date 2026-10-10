@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>BookStore Account Status</title>
+</head>
+
+<body
+  style="
+    margin: 0;
+    padding: 0;
+    background-color: #f3f4f6;
+    font-family: Arial, Helvetica, sans-serif;
+  "
+>
+
+  <div
+    style="
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    "
+  >
+
+    <!-- HEADER -->
+
+    <div
+      style="
+        background-color: #111827;
+        padding: 25px;
+        text-align: center;
+      "
+    >
+      <h1
+        style="
+          margin: 0;
+          color: #ffffff;
+          font-size: 28px;
+        "
+      >
+        Book<span style="color: #f97316;">Store</span>
+      </h1>
+    </div>
+
+    <!-- CONTENT -->
+
+    <div
+      style="
+        padding: 35px;
+        color: #374151;
+      "
+    >
+
+      <h2
+        style="
+          margin-top: 0;
+          color: #111827;
+        "
+      >
+        Hello {{firstName}},
+      </h2>
+
+      {{#if isActive}}
+
+        <p
+          style="
+            font-size: 16px;
+            line-height: 1.6;
+          "
+        >
+          Your BookStore account has been
+          <strong style="color: #16a34a;">
+            activated
+          </strong>
+          by the administrator.
+        </p>
+
+        <div
+          style="
+            margin: 25px 0;
+            padding: 18px;
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            border-radius: 6px;
+          "
+        >
+          <strong style="color: #15803d;">
+            Account Status: Active
+          </strong>
+
+          <p
+            style="
+              margin-bottom: 0;
+              color: #374151;
+            "
+          >
+            You can now log in and use your
+            BookStore account.
+          </p>
+        </div>
+
+      {{else}}
+
+        <p
+          style="
+            font-size: 16px;
+            line-height: 1.6;
+          "
+        >
+          Your BookStore account has been
+          <strong style="color: #dc2626;">
+            blocked
+          </strong>
+          by the administrator.
+        </p>
+
+        <div
+          style="
+            margin: 25px 0;
+            padding: 18px;
+            background-color: #fef2f2;
+            border-left: 4px solid #dc2626;
+            border-radius: 6px;
+          "
+        >
+          <strong style="color: #b91c1c;">
+            Account Status: Blocked
+          </strong>
+
+          <p
+            style="
+              margin-bottom: 0;
+              color: #374151;
+            "
+          >
+            You cannot log in while your account
+            is blocked.
+          </p>
+        </div>
+
+      {{/if}}
+
+      <p
+        style="
+          font-size: 15px;
+          line-height: 1.6;
+        "
+      >
+        If you have any questions, please
+        contact our support team.
+      </p>
+
+      <p
+        style="
+          margin-top: 30px;
+          color: #6b7280;
+        "
+      >
+        Regards,<br>
+        <strong>BookStore Team</strong>
+      </p>
+
+    </div>
+
+    <!-- FOOTER -->
+
+    <div
+      style="
+        padding: 20px;
+        text-align: center;
+        background-color: #f9fafb;
+        color: #9ca3af;
+        font-size: 13px;
+      "
+    >
+      © {{year}} BookStore. All rights reserved.
+    </div>
+
+  </div>
+
+</body>
+</html>
