@@ -99,15 +99,9 @@ export const userRegister = async (req, res, next) => {
       {
         httpOnly: true,
 
-        secure:
-          process.env.NODE_ENV ===
-          "production",
+        secure: true,
 
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
+        sameSite: "none",
 
         path: "/",
 
