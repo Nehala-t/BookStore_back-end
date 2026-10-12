@@ -121,17 +121,11 @@ export const userRegister = async (req, res, next) => {
       "role",
       newUser.role,
       {
-        httpOnly: false,
+        httpOnly: true,
 
-        secure:
-          process.env.NODE_ENV ===
-          "production",
+        secure: true,
 
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
+        sameSite: "none",
 
         path: "/",
 
