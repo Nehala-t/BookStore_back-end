@@ -78,3 +78,5 @@ export const accountStatusTemplate = ({
     year: new Date().getFullYear(),
   });
 };
+
+
