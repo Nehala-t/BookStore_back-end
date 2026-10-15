@@ -14,7 +14,6 @@ router.post("/addBook", authMiddleware, upload.array("images", 5), bookValidatio
 
 router.get(
     "/getAllBooks",
-    authMiddleware,
     getAllBooks
 );
 
