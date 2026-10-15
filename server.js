@@ -31,7 +31,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: "https://book-store-front-end-vp74.vercel.app",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );

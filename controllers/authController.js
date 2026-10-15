@@ -1,81 +1,59 @@
+
 import HttpError from "../utils/httpError.js";
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-// =====================================================
-// USER REGISTER
-// =====================================================
+// =========================
+// Cookie Configuration
+// =========================
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite:
+    process.env.NODE_ENV === "production" ? "none" : "lax",
+  path: "/",
+  maxAge: 24 * 60 * 60 * 1000,
+});
 
+// =========================
+// Register User
+// =========================
 export const userRegister = async (req, res, next) => {
   try {
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      role,
-    } = req.body;
+    const { firstName, lastName, email, password, role } = req.body || {};
 
-    // Validate required fields
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !password
-    ) {
+    if (!firstName || !lastName || !email || !password) {
       return next(
-        new HttpError(
-          "Please provide all required fields",
-          400
-        )
+        new HttpError("Please provide all required fields", 400)
       );
     }
 
-    // Normalize email
-    const normalizedEmail =
-      email.toLowerCase().trim();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if email already exists
     const existingUser = await User.findOne({
       email: normalizedEmail,
     });
 
     if (existingUser) {
-      return next(
-        new HttpError(
-          "Email already exists",
-          400
-        )
-      );
+      return next(new HttpError("Email already exists", 400));
     }
 
-    // Hash password
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
     const newUser = await User.create({
-      firstName,
-      lastName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: normalizedEmail,
       password: hashedPassword,
-
-      role:
-        role === "seller"
-          ? "seller"
-          : "user",
-
-      // New users are active immediately
+      role: role === "seller" ? "seller" : "user",
       status: "Active",
-
-      // Account is not deleted
       isDeleted: false,
     });
 
-    // =================================================
-    // CREATE JWT
-    // =================================================
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing from environment variables");
+    }
 
     const token = jwt.sign(
       {
@@ -84,69 +62,23 @@ export const userRegister = async (req, res, next) => {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn:
-          process.env.JWT_TOKEN_EXPIRY,
+        expiresIn: process.env.JWT_TOKEN_EXPIRY || "1d",
       }
     );
 
-    // =================================================
-    // STORE ACCESS TOKEN COOKIE
-    // =================================================
+    const cookieOptions = getCookieOptions();
 
-    res.cookie(
-      "accessToken",
-      token,
-      {
-        httpOnly: true,
+    res.cookie("accessToken", token, cookieOptions);
 
-        secure: true,
-
-        sameSite: "none",
-
-        path: "/",
-
-        maxAge:
-          24 *
-          60 *
-          60 *
-          1000,
-      }
-    );
-
-    // =================================================
-    // STORE ROLE COOKIE
-    // =================================================
-
-    res.cookie(
-      "role",
-      newUser.role,
-      {
-        httpOnly: true,
-
-        secure: true,
-
-        sameSite: "none",
-
-        path: "/",
-
-        maxAge:
-          24 *
-          60 *
-          60 *
-          1000,
-      }
-    );
-
-    // =================================================
-    // RESPONSE
-    // =================================================
+    // The role cookie can be read by frontend code if required.
+    res.cookie("role", newUser.role, {
+      ...cookieOptions,
+      httpOnly: false,
+    });
 
     return res.status(201).json({
       success: true,
-
-      message:
-        "Account created successfully.",
-
+      message: "Account created successfully.",
       data: {
         _id: newUser._id,
         email: newUser.email,
@@ -157,349 +89,137 @@ export const userRegister = async (req, res, next) => {
         isDeleted: newUser.isDeleted,
       },
     });
-
   } catch (error) {
-    console.error(
-      "Registration Error:",
-      error
-    );
+    console.error("Registration Error:", error.message);
+
+    if (error.code === 11000) {
+      return next(new HttpError("Email already exists", 400));
+    }
 
     return next(
-      new HttpError(
-        error.message ||
-          "Internal Server Error",
-        500
-      )
+      new HttpError(error.message || "Internal Server Error", 500)
     );
   }
 };
 
-
-
-// =====================================================
-// USER LOGIN
-// =====================================================
-
-export const userLogin = async (
-  req,
-  res,
-  next
-) => {
+// =========================
+// Login User
+// =========================
+export const userLogin = async (req, res, next) => {
   try {
-    const {
-      email,
-      password,
-    } = req.body;
-
-    // =================================================
-    // VALIDATE INPUT
-    // =================================================
+    const { email, password } = req.body || {};
 
     if (!email || !password) {
       return next(
-        new HttpError(
-          "Email and password are required",
-          400
-        )
+        new HttpError("Email and password are required", 400)
       );
     }
 
-    // =================================================
-    // NORMALIZE EMAIL
-    // =================================================
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing from environment variables");
+    }
 
-    const normalizedEmail =
-      email.toLowerCase().trim();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // =================================================
-    // FIND USER
-    // =================================================
-
-    const user =
-      await User.findOne({
-        email: normalizedEmail,
-      }).select(
-        "_id firstName lastName email role password status isDeleted"
-      );
-
-    console.log(
-      "USER FOUND:",
-      user
+    const user = await User.findOne({
+      email: normalizedEmail,
+    }).select(
+      "_id firstName lastName email role password status isDeleted"
     );
 
-    // =================================================
-    // USER DOES NOT EXIST
-    // =================================================
-
     if (!user) {
-      return next(
-        new HttpError(
-          "Invalid email or password",
-          401
-        )
-      );
+      return next(new HttpError("Invalid email or password", 401));
     }
-
-    // =================================================
-    // CHECK DELETED ACCOUNT
-    // =================================================
 
     if (user.isDeleted) {
       return res.status(403).json({
         success: false,
-
         status: "Deleted",
-
-        message:
-          "Your account has been deleted.",
+        message: "Your account has been deleted.",
       });
     }
 
-    // =================================================
-    // CHECK PASSWORD
-    // =================================================
-
-    const isMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
-
-    console.log(
-      "Bcrypt Match Result:",
-      isMatch
-    );
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return next(
-        new HttpError(
-          "Invalid email or password",
-          401
-        )
-      );
+      return next(new HttpError("Invalid email or password", 401));
     }
 
-    // =================================================
-    // CHECK BLOCKED USER
-    // =================================================
+    if (user.status === "Blocked") {
+      return res.status(403).json({
+        success: false,
+        status: "Blocked",
+        message: "Your account has been blocked by the admin.",
+      });
+    }
 
-  if (user.status === "Blocked") {
-  return res.status(403).json({
-    success: false,
-    status: "Blocked",
-    message:
-      "Your account has been blocked by the admin.",
-  });
-}
-
-    // =================================================
-    // CREATE JWT
-    // =================================================
-
-    const token =
-      jwt.sign(
-        {
-          user_id: user._id,
-
-          role: user.role,
-        },
-
-        process.env.JWT_SECRET,
-
-        {
-          expiresIn:
-            process.env
-              .JWT_TOKEN_EXPIRY,
-        }
-      );
-
-    // =================================================
-    // STORE ACCESS TOKEN COOKIE
-    // =================================================
-
-    res.cookie(
-      "accessToken",
-      token,
+    const token = jwt.sign(
       {
-        httpOnly: true,
-
-        secure:
-          process.env.NODE_ENV ===
-          "production",
-
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
-
-        path: "/",
-
-        maxAge:
-          24 *
-          60 *
-          60 *
-          1000,
+        user_id: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_TOKEN_EXPIRY || "1d",
       }
     );
 
-    // =================================================
-    // STORE ROLE COOKIE
-    // =================================================
+    const cookieOptions = getCookieOptions();
 
-    res.cookie(
-      "role",
-      user.role,
-      {
-        httpOnly: false,
+    res.cookie("accessToken", token, cookieOptions);
 
-        secure:
-          process.env.NODE_ENV ===
-          "production",
-
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
-
-        path: "/",
-
-        maxAge:
-          24 *
-          60 *
-          60 *
-          1000,
-      }
-    );
-
-    // =================================================
-    // LOG LOGIN INFORMATION
-    // =================================================
-
-    console.log(
-      "ACCESS TOKEN CREATED:",
-      token
-    );
-
-    console.log(
-      "USER ROLE:",
-      user.role
-    );
-
-    console.log(
-      "USER STATUS:",
-      user.status
-    );
-
-    console.log(
-      "SET-COOKIE HEADER:",
-      res.getHeader(
-        "Set-Cookie"
-      )
-    );
-
-    // =================================================
-    // LOGIN RESPONSE
-    // =================================================
+    res.cookie("role", user.role, {
+      ...cookieOptions,
+      httpOnly: false,
+    });
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Login successful",
-
+      message: "Login successful",
       data: {
         _id: user._id,
-
         email: user.email,
-
         role: user.role,
-
-        firstName:
-          user.firstName,
-
-        lastName:
-          user.lastName,
-
-        status:
-          user.status,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        status: user.status,
       },
     });
-
   } catch (error) {
-    console.error(
-      "Login Error:",
-      error
-    );
+    console.error("Login Error:", error.message);
 
     return next(
-      new HttpError(
-        error.message ||
-          "Internal Server Error",
-        500
-      )
+      new HttpError(error.message || "Internal Server Error", 500)
     );
   }
 };
 
-
-// =====================================================
-// LOGOUT
-// =====================================================
-
-export const logout = async (
-  req,
-  res,
-  next
-) => {
+// =========================
+// Logout User
+// =========================
+export const logout = async (req, res, next) => {
   try {
-    // Clear access token
-    res.clearCookie(
-      "accessToken",
-      {
-        httpOnly: true,
+    const cookieOptions = getCookieOptions();
 
-        secure:
-          process.env.NODE_ENV ===
-          "production",
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      path: cookieOptions.path,
+    });
 
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
-
-        path: "/",
-      }
-    );
-
-    // Clear role
-    res.clearCookie(
-      "role",
-      {
-        httpOnly: false,
-
-        secure:
-          process.env.NODE_ENV ===
-          "production",
-
-        sameSite:
-          process.env.NODE_ENV ===
-          "production"
-            ? "none"
-            : "lax",
-
-        path: "/",
-      }
-    );
+    res.clearCookie("role", {
+      httpOnly: false,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      path: cookieOptions.path,
+    });
 
     return res.status(200).json({
       success: true,
-      message:
-        "Logged out successfully",
+      message: "Logged out successfully",
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
